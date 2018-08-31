@@ -229,3 +229,5 @@ module time_control (clk_1HZ,power_light,run_state,current_model,current_water,c
         else //完成状态或未启动状态
           begin in_water<=0;out_water<=0;end
       end
+
+endmodule
