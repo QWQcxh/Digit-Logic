@@ -1,16 +1,18 @@
 `timescale 1 ns / 1 ps
-module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_state,wash_light,dwash_light,dry_light,start_light,buzzer_light);
-    input clk,clk_1HZ,start,reset;
+module program_light (clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add,current_model,current_program,run_state,
+wash_light,dwash_light,dry_light,start_light,buzzer_light);
+    input clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add;
     input [2:0]current_model;
     input [1:0]current_program,run_state;
     output reg wash_light,dwash_light,dry_light,start_light,buzzer_light;
 
     reg [31:0] counter;
-    reg power_switch,start_switch,model_switch;//三个开关状态
+    reg power_flag,start_flag,model_flag,clothes_flag;//三个开关状态
     reg end_program;//程序结束标志
 
     parameter N=100_000_000;
-
+//    parameter N=4;
+    
     initial 
         begin
           wash_light<=0;
@@ -19,28 +21,31 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
           start_light<=0;
           buzzer_light<=0;
           counter<=0;
-          power_switch<=0;
-          start_switch<=0;
-          model_switch<=0;
+          power_flag<=0;
+          start_flag<=0;
+          model_flag<=0;
+          clothes_flag<=0;
           end_program<=0;
         end
 
-    always @ (current_model or current_program or power_light or clk_1HZ)
+    //确定wash_light,dwash_light,dry_light的输出
+    //影响信号：开关灯信号power_light,模式选择信号和当前程序信号，以及闪烁脉冲和程序完成信号
+    always @ (posedge clk)
         begin
-          if (!power_light)//电源未开启
+          if (power_light==1'b0)//电源关闭，关上所有灯
             begin
               wash_light<=0;
               dwash_light<=0;
               dry_light<=0;
             end
-        else if (run_state!=1) //电源开启但是未启动
+          else if (run_state!=2'b01) //电源开启且处于暂停或者未启动状态，常亮模式灯
             begin
               case (current_model)
                 3'b000://洗漂脱
                     begin
                       wash_light<=1;
                       dwash_light<=1;
-                      drylight<=1;
+                      dry_light<=1;
                     end 
                 3'b001://单洗
                     begin
@@ -74,29 +79,30 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                     end
                 default: 
                     begin
-                      wash_light<=wash_light;
-                      dwash_light<=dwash_light;
-                      dry_light<=dry_light;
+                      wash_light<=0;
+                      dwash_light<=0;
+                      dry_light<=0;
+                    end
               endcase
             end
-        else //电源启动
+          else if(finish==1'b0)//处于启动未完成状态,需要闪烁
             begin
               case (current_model)
               3'b000://洗漂脱
                 begin
-                  if (current_program==0)
+                  if (current_program==2'b00) //洗涤灯闪烁
                     begin
                       wash_light<=clk_1HZ;
                       dwash_light<=1;
                       dry_light<=1;
                     end
-                  else if (current_program==1)
+                  else if (current_program==2'b01) //漂洗灯闪烁
                     begin
                       wash_light<=1;
                       dwash_light<=clk_1HZ;
                       dry_light<=1;
                     end
-                  else
+                  else  //脱水灯闪烁
                     begin
                       wash_light<=1;
                       dwash_light<=1;
@@ -109,7 +115,7 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                 end
               3'b010://洗漂
                 begin
-                  if (current_program==0)
+                  if (current_program==2'b00)
                     begin
                       wash_light<=clk_1HZ;
                       dwash_light<=1;
@@ -126,7 +132,7 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                 end
               3'b100://漂脱
                 begin
-                  if (current_program==1)
+                  if (current_program==2'b01)
                     begin
                       dwash_light<=clk_1HZ;
                       dry_light<=1;
@@ -141,61 +147,85 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                 begin
                   dry_light<=clk_1HZ;
                 end
+              default:
+                begin
+                  wash_light<=0;
+                  dwash_light<=0;
+                  dry_light<=0;
+                end
+              endcase
+            end
+          else  //程序完成灯恢复默认洗漂脱模式
+            begin
+              wash_light<=1;
+              dwash_light<=1;
+              dry_light<=1;
             end
         end
 
-    always @ (run_state)
-        begin
-          if (!power_light) //电源关闭状态
-              start_light<=0;
-          else if (run_state==1) //启动
-              start_light<=1;
-          else //暂停或完成
-              start_light<=0;
-        end
+    //确定启动暂停灯
+    //影响信号：启动暂停键的拨动，程序彻底结束信号（蜂鸣3次）
+    always @ (posedge clk)
+      begin
+        if (run_state==2'b00||run_state==2'b10||end_program==1'b01)
+            start_light<=0;
+        else
+            start_light<=1;
+      end
 
+    //确定蜂鸣灯
     always @ (posedge clk)   //开关被按下或者完成
       begin
-        if (!power_light)//电源关闭，所有信号无效。恢复预设。
+        if (power_light==1'b0)//电源关闭，所有信号无效。恢复预设。
           begin
-            counter<=0;
-            power_switch<=0;
-            start_switch<=0;
-            model_switch<=0;
-            end_program<=0;
+             counter<=0;
+             power_flag<=0;
+             start_flag<=0;
+             model_flag<=0;
+             clothes_flag<=0;
+             end_program<=0;
           end
-        else if (reset!=power_switch)//触发计时启动
+        else if (reset!=power_flag)//电源键计时触发
           begin
-            if (!reset) //开关闭合
-              power_switch<=reset;
+            if (reset==1'b0) //开关闭合
+              power_flag<=reset;
             else if(counter)//开关打开，但前一个计时正在进行
-              counter<=counter;
+              power_flag<=reset;
             else //开关打开且未计时
-              begin counter<=counter+1;buzzer_light<=1; end
+              begin counter<=counter+1;buzzer_light<=1;power_flag<=reset; end
           end
-        else if (start!=start_switch)//启动计时触发
+        else if (start!=start_flag)//启动计时触发
           begin
-            if (!start)//启动开关闭合
-              start_switch<=start;
+            if (start==1'b0)//启动开关闭合
+              start_flag<=start;
             else if (counter)
-              counter<=counter;
+              start_flag<=start;
             else
-              begin counter<=counter+1;buzzer_light<=1; end
+              begin counter<=counter+1;buzzer_light<=1;start_flag<=start; end
           end
-        else if (model_choose!=model_switch)
+        else if (model_choose!=model_flag)  //模式选择开关
           begin
-            if (!model_choose)
-              model_switch<=model_choose;
+            if (model_choose==1'b0)
+              model_flag<=model_choose;
             else if (counter)
-              counter<=counter;
+              model_flag<=model_choose;
             else  
-              begin counter<=counter+1;buzzer_light<=1; end
+              begin counter<=counter+1;buzzer_light<=1;model_flag<=model_choose; end
           end
-        else if(!counter&&run_state==3)//运行完成计时触发
-          begin counter<=counter+1;buzzer_light<=1; end
+        else if (clothes_add!=clothes_flag) //加衣开关
+          begin
+            if (clothes_add==1'b0)
+              clothes_flag<=clothes_add;
+            else if (counter)
+              clothes_flag<=clothes_add;
+            else 
+              begin counter<=counter+1;buzzer_light<=1;clothes_flag<=clothes_add; end
+          end
+        else if(counter==32'd0&&finish==1'b1)//运行完成计时触发
+          begin counter<=counter+1;buzzer_light<=1;end
         else if (counter) //正在计时
           begin
-            if (run_state==3)//运行完成蜂鸣9声计时。
+            if (finish==1'b1)//运行完成蜂鸣9声计时。
               begin
                 case (counter)
                   N/4:begin buzzer_light<=0;counter<=counter+1;end
@@ -214,8 +244,9 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                   4*N:begin buzzer_light<=1;counter<=counter+1;end
                   17*N/4:begin buzzer_light<=0;counter<=counter+1;end
                   9*N/2:begin buzzer_light<=1;counter<=counter+1;end
-                  19*N/4:begin buzzer_light<=0;counter<=counter+1;end//第三个
+                  19*N/4:begin buzzer_light<=0;counter<=counter;end_program<=1;end//第三个
                   default:counter<=counter+1;
+                endcase
               end
             else //开关计时
               begin
@@ -224,11 +255,11 @@ module program_light (clk,clk_1HZ,start,reset,current_model,current_program,run_
                     counter<=0;
                     buzzer_light<=0;
                   end
+                else 
+                    counter<=counter+1;
               end
           end
         else //没触发，也没正在计时
-          counter<=counter;
-        //需要区分正在进行的计时
-        //计时完毕且无触发信号
+          counter <= 32'd0;
       end
 endmodule

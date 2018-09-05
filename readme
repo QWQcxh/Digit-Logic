@@ -1,2 +1,5 @@
-It's a course design of Digit Logic in HUST.
-the project is to create a washing machine.
+1. It's a course design of Digit Logic in HUST.
+2. the project is to create a washing machine.
+3. I use synchronous timing logic to write it. 
+4. Think twice if you try to use asynchronous timing logic.
+5. This project just satisfies the basic functions, I don't add the additional functions, please start your imagination.
