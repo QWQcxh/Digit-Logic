@@ -38,7 +38,7 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
               dwash_light<=0;
               dry_light<=0;
             end
-          else if (run_state!=2'b01) //电源开启且处于暂停或者未启动状态，常亮模式灯
+          else if (run_state==2'b00) //电源开启且处于暂停或者未启动状态，常亮模式灯
             begin
               case (current_model)
                 3'b000://洗漂脱
@@ -85,6 +85,15 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                     end
               endcase
             end
+          else if(run_state==2'b10) //暂停
+            begin
+              case(current_program)
+                2'b00:wash_light<=1;
+                2'b01:dwash_light<=1;
+                2'b10:dry_light<=1;
+                default:begin wash_light<=1; dwash_light<=1; dry_light<=1; end
+              endcase
+            end
           else if(finish==1'b0)//处于启动未完成状态,需要闪烁
             begin
               case (current_model)
@@ -98,14 +107,14 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                     end
                   else if (current_program==2'b01) //漂洗灯闪烁
                     begin
-                      wash_light<=1;
+                      wash_light<=0;
                       dwash_light<=clk_1HZ;
                       dry_light<=1;
                     end
                   else  //脱水灯闪烁
                     begin
-                      wash_light<=1;
-                      dwash_light<=1;
+                      wash_light<=0;
+                      dwash_light<=0;
                       dry_light<=clk_1HZ;
                     end
                 end
@@ -122,7 +131,7 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                     end
                   else
                     begin
-                      wash_light<=1;
+                      wash_light<=0;
                       dwash_light<=clk_1HZ; 
                     end
                 end
@@ -139,7 +148,7 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                     end
                   else
                     begin
-                      dwash_light<=1;
+                      dwash_light<=0;
                       dry_light<=clk_1HZ;
                     end
                 end

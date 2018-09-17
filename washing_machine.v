@@ -7,8 +7,8 @@ power_light,start_light,wash_light,dwash_light,dry_light,inwater_light,outwater_
     output wash_light,dwash_light,dry_light;//洗涤，漂洗，脱水指示灯
     output inwater_light,outwater_light,buzzer_light;//进水，排水，蜂鸣灯。
     output wire[7:0] digit_show;//数字七段显示管
-//    output wire[7:0] AN;//显示管控制信号
-    output wire [3:0] AN;
+    output wire[7:0] AN;//显示管控制信号
+    // output wire [3:0] AN;
     
     //本模块用到的线网及寄存器。
     wire clk_1HZ,clk_10000HZ,finish;
@@ -21,6 +21,7 @@ power_light,start_light,wash_light,dwash_light,dry_light,inwater_light,outwater_
     reg[3:0] end_counter;
     reg[1:0] run_state;//仿真添加output
     reg start_flag;
+    reg model_flag;
 
     water_amount ins_water (clk,power_light,run_state,finish,clothes_add,current_water);
     model_change ins_model (power_light,run_state,finish,model_choose,current_model);
@@ -49,12 +50,12 @@ buzzer_light);
             power_light<=~power_light;
         end
 
-    always @ (posedge clk)
+    always @ (posedge clk) //确定运行状态
         begin
-          if (power_light==1'b0)
+          if (power_light==1'b0)//断电不响应
             run_state<=2'b00;
           else
-            if(start)
+            if(start)  //启动键被按下
               begin
                 if (start_flag==1'b0)
                     begin
@@ -70,7 +71,16 @@ buzzer_light);
                     run_state<=run_state;
               end
             else
+              begin
                 start_flag<=1'b0;
+                if(model_choose && model_flag==1'b0)  //按下模式选择键
+                  begin
+                    model_flag<=1'b1;
+                    run_state<=run_state==2'b10 ? 2'b00:run_state;
+                  end
+                else
+                  model_flag<=model_choose;
+              end
         end
     
     //设定10s自动断电信号

@@ -94,10 +94,12 @@ finish,current_time,total_time,current_program,in_water,out_water);
             begin 
               current_time<=11;
               current_program<=0;
-              finish<=0; 
+              finish<=0;
+              clk_counter<=0; 
             end
           else if (run_state==2'b00) //通电且未启动确定启动前的各时间设置。
             begin
+              clk_counter<=0;
               if (wash_time) //洗衣时间不为0
                 begin
                   current_time<=wash_time;
