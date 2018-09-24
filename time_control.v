@@ -1,9 +1,10 @@
 `timescale 1 ns / 1 ps
-module time_control (clk,power_light,run_state,current_model,current_water,
+module time_control (clk,power_light,run_state,current_model,current_water,rest_time,
 finish,current_time,total_time,current_program,in_water,out_water);
     input clk,power_light; //100MHZ信号，电灯状态,程序完成状态
     input [1:0] run_state; //运行状态
     input [2:0] current_model,current_water;//当前洗衣模式以及水量
+    input [6:0] rest_time;
     output reg in_water,out_water,finish; //进出水指示，
     output reg[1:0] current_program;//当前程序
     output reg[6:0] current_time,total_time;//当前时间以及总剩余时间
@@ -123,7 +124,14 @@ finish,current_time,total_time,current_program,in_water,out_water);
             end
           else if (run_state==2'b01&&finish==0)//启动状态根据模式和当前程序维护current_time和current_program
             begin
-              if (clk_counter>= N-1)  //已经计时1s
+            //判断计时器是否为0
+              if(rest_time > 7'b0)
+                begin
+                    current_time<=current_time;
+                    current_program<=current_program;
+                    finish<=0;
+                end
+              else if (clk_counter>= N-1)  //已经计时1s
                 begin
                   clk_counter<=32'd0;//清零计数器
                   if (current_time==1) //当前程序已经计数完成
@@ -218,7 +226,7 @@ finish,current_time,total_time,current_program,in_water,out_water);
             in_water<=0;
             out_water<=0;
           end
-        else if (run_state==1&&finish==0)//启动状态
+        else if (run_state==1&&finish==0&&rest_time==7'b0)//启动状态
           begin
             case (current_program)
               2'b00://洗涤程序

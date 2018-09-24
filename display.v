@@ -1,7 +1,7 @@
 `timescale 1 ns / 1 ps
-module display (clk,power_light,current_time,total_time,current_water,digit_show,AN);
+module display (clk,power_light,current_time,total_time,current_water,rest_time,digit_show,AN);
     input clk,power_light;
-    input [6:0] current_time,total_time;
+    input [6:0] current_time,total_time,rest_time;
     input [2:0] current_water;
     output wire [7:0] digit_show;
     
@@ -69,8 +69,8 @@ module display (clk,power_light,current_time,total_time,current_water,digit_show
 
     always @ (posedge clk)
         begin
-         RAM[7] <= 10;
-         RAM[6] <= 10;
+         RAM[7] <= rest_time==7'b0 ? 7'd10:rest_time/10;
+         RAM[6] <= rest_time==7'b0 ? 7'd10:rest_time%10;
          RAM[5] <= total_time/10;
          RAM[4] <= total_time%10;
          RAM[3] <= current_time/10;

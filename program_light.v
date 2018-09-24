@@ -1,13 +1,14 @@
 `timescale 1 ns / 1 ps
-module program_light (clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add,current_model,current_program,run_state,
+module program_light (clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add,current_model,current_program,run_state,rest_time,order_time,
 wash_light,dwash_light,dry_light,start_light,buzzer_light);
-    input clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add;
+    input clk,clk_1HZ,start,reset,power_light,finish,model_choose,clothes_add,order_time;
     input [2:0]current_model;
     input [1:0]current_program,run_state;
+    input [6:0]rest_time;
     output reg wash_light,dwash_light,dry_light,start_light,buzzer_light;
 
     reg [31:0] counter;
-    reg power_flag,start_flag,model_flag,clothes_flag;//三个开关状态
+    reg power_flag,start_flag,model_flag,clothes_flag,order_flag;//三个开关状态
     reg end_program;//程序结束标志
 
     parameter N=100_000_000;
@@ -94,7 +95,7 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                 default:begin wash_light<=1; dwash_light<=1; dry_light<=1; end
               endcase
             end
-          else if(finish==1'b0)//处于启动未完成状态,需要闪烁
+          else if(finish==1'b0 && rest_time==7'b0)//处于启动未完成状态,需要闪烁
             begin
               case (current_model)
               3'b000://洗漂脱
@@ -164,11 +165,17 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
                 end
               endcase
             end
-          else  //程序完成灯恢复默认洗漂脱模式
+          else  if(finish==1'b1)//程序完成灯恢复默认洗漂脱模式
             begin
               wash_light<=1;
               dwash_light<=1;
               dry_light<=1;
+            end
+          else
+            begin
+              wash_light<=wash_light;
+              dwash_light<=dwash_light;
+              dry_light<=dry_light;
             end
         end
 
@@ -192,6 +199,7 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
              start_flag<=0;
              model_flag<=0;
              clothes_flag<=0;
+             order_flag<=0;
              end_program<=0;
           end
         else if (reset!=power_flag)//电源键计时触发
@@ -229,6 +237,15 @@ wash_light,dwash_light,dry_light,start_light,buzzer_light);
               clothes_flag<=clothes_add;
             else 
               begin counter<=counter+1;buzzer_light<=1;clothes_flag<=clothes_add; end
+          end
+        else if(order_time!=order_flag)
+          begin
+            if(order_time==1'b0)
+              order_flag<=order_time;
+            else if(counter)
+              order_flag<=order_time;
+            else 
+              begin counter<=counter+1;buzzer_light<=1;order_flag<=order_time; end
           end
         else if(counter==32'd0&&finish==1'b1)//运行完成计时触发
           begin counter<=counter+1;buzzer_light<=1;end
