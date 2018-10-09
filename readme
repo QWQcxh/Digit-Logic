@@ -1,6 +1,0 @@
-1. It's a course design of Digit Logic in HUST.
-2. the project is to create a washing machine.
-3. I use synchronous timing logic to write it. 
-4. Think twice if you try to use asynchronous timing logic.
-5. I added the additional order functions, it means you can choose a time tocount down, what's more,I add a clean key used to zero clearing order time when the machine is running countdown.
-6. It's the final version,and I'll stop to maintain the project.If you have any questions,"YOU CAN SOLVE IT BY YOURSELF"
